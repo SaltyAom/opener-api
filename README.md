@@ -1,6 +1,6 @@
 # Opener API
 ### Opener API for generating hex code for using with Opener and accessing nhentai open graph data
-This API is hosted on [now.sh][now.sh], you might need to config your node.env yourself.
+This API is hosted on now.sh, you might need to config your node.env yourself.
 
 ## Usage
 Example of fetching API
