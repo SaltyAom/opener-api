@@ -6,14 +6,22 @@
   "dependencies": {
     "apicache": "^1.4.0",
     "axios": "^0.18.0",
-    "canvas": "^2.4.1",
+    "body-parser": "^1.19.0",
+    "canvas": "^2.5.0",
     "compression": "^1.7.4",
     "cors": "^2.8.5",
     "ddos": "^0.2.1",
-    "dotenv": "^7.0.0",
-    "express": "^4.16.4",
-    "helmet": "^3.16.0",
-    "now-env": "^3.1.0",
-    "open-graph-scraper": "^3.6.1"
+    "dotenv": "^8.0.0",
+    "express": "^4.17.0",
+    "express-end": "^0.0.8",
+    "express-queue": "^0.0.12",
+    "helmet": "^3.18.0",
+    "mini-queue": "0.0.14",
+    "now-env": "^3.2.0",
+    "open-graph-scraper": "^3.6.1",
+    "pureimage": "^0.1.6"
+  },
+  "scripts": {
+    "start": "node index.js"
   }
 }

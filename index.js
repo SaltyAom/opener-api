@@ -6,6 +6,7 @@ const express = require('express'),
     helmet = require('helmet'),
     Ddos = require('ddos'),
     cache = apicache.middleware,
+    queue = require('express-queue'),
     Axios = require("axios");
 
 require('now-env');
@@ -15,12 +16,12 @@ onDenial = err => {
 }
 
 const ddos = new Ddos({
-    burst:30, 
+    burst:30,
     limit:30,
-    maxCount:60,
-    checkInterval: 5,
+    maxCount:80,
+    checkInterval: 7,
     onDenial,
-    errormessage: "You have been blocked, UMU",
+    errormessage: "You have been blocked due to attempted DOS, UMU",
     whitelist:[
         'https://opener-pro.mystia-project.com',
         'https://opener.mystiar.com',
@@ -28,11 +29,12 @@ const ddos = new Ddos({
     ]
 })
 
-app.use(cors());
-app.use(cache('30 minutes'));
-app.use(helmet());
-app.use(compression());
 app.use(ddos.express);
+app.use(cache('1 hour'));
+app.use(queue({ activeLimit: 7, queuedLimit: -1 }));
+app.use(compression());
+app.use(helmet());
+app.use(cors());
 
 app.get("/api/g", (req, res) => {
     res.json({
@@ -121,13 +123,17 @@ app.get("/api/relate/:id", (req, res) => {
         return false;
     }
 
-    Axios(`https://nhentai.net/api/gallery/${req.params.id}/related`).then(({data}) => {
+    Axios(`https://nhentai.net/api/gallery/${req.params.id}/related`).then(data => {
         res.json(data);
         res.end();
         return true
     }).catch(err => {
         res.json(err);
     })
+});
+
+app.get("/version", (req,res) => {
+    res.send(process.version);
 });
 
 app.get("*", (req, res) => {
