@@ -36,9 +36,17 @@ app.use(compression());
 app.use(helmet());
 app.use(cors());
 
-app.get("/api/g", (req, res) => {
+app.get("/", (req, res) => {
     res.json({
+        data: "API usage list is at https://github.com/aomkirby123/opener-api",
+        success:true
+    })
+});
+
+app.get("/api/g", (req, res) => {
+    res.status(401).json({
         "error": "No id provided",
+        "description": "Correct syntax is /api/g/:id",
         "success": false
     })
     res.end();
@@ -56,9 +64,32 @@ app.get("/api/g/:id", async (req, res) => {
     });
 });
 
+app.get("/api/og/:id", async (req, res) => {
+    let ogs = require('open-graph-scraper');
+    ogs({
+        'url': `https://nhentai.net/g/${req.params.id}`
+    }, (err, data) => {
+        res.json(data);
+        res.end();
+        return !err;
+    });
+});
+
+app.get("/api/opengraph/:id", async (req, res) => {
+    let ogs = require('open-graph-scraper');
+    ogs({
+        'url': `https://nhentai.net/g/${req.params.id}`
+    }, (err, data) => {
+        res.json(data);
+        res.end();
+        return !err;
+    });
+});
+
 app.get("/api/generate", (req, res) => {
-    res.json({
+    res.status(401).json({
         "success": false,
+        "description": "Correct syntax is /api/generate/:id",
         "error": "No hexcode provided"
     });
     res.end();
@@ -70,9 +101,10 @@ app.get("/api/generate/:id", async (req, res) => {
         hexLength = hexCode.length;
 
     if(hexLength > 6 && hexLength < 1){
-        res.json({
+        res.status(401).json({
             "success": false,
             "error": "Invaild hex code format",
+            "description": "Correct syntax is /api/generate/:id",
             dataURL: null
         });
         res.end();
@@ -104,8 +136,9 @@ app.get("/api/generate/:id", async (req, res) => {
 });
 
 app.get("/api/relate", (req, res) => {
-    res.json({
+    res.status(401).json({
         "success": false,
+        "description": "Correct syntax is /api/relate/:id",
         "error": "No id provided"
     });
     res.end();
@@ -117,6 +150,7 @@ app.get("/api/relate/:id", (req, res) => {
         res.json({
             "success": false,
             "error": "Invaild id format",
+            "description": "Correct syntax is /api/relate/:id between 1 to 999999",
             dataURL: null
         });
         res.end();
@@ -124,16 +158,95 @@ app.get("/api/relate/:id", (req, res) => {
     }
 
     Axios(`https://nhentai.net/api/gallery/${req.params.id}/related`).then(data => {
-        res.json(data);
+        res.send(data.data);
         res.end();
         return true
     }).catch(err => {
-        res.json(err);
+        res.status(401).json(err);
     })
+});
+
+app.get("/api/data", (req,res) => {
+    res.status(401).json({
+        "error": "No id provided",
+        "description": "Correct syntax is /api/data/:id",
+        "success": false
+    })
+    res.end();
+    return false;
+});
+
+app.get("/api/data/:id", (req,res) => {
+    Axios(`https://nhentai.net/api/gallery/${req.params.id}`).then(data => {
+        res.send(data.data);
+        res.end();
+        return true
+    }).catch(err => {
+        res.status(401).json(err);
+    });
+});
+
+app.get("/api/tag", (req,res) => {
+    res.status(401).json({
+        "error": "No id provided",
+        "description": "Correct syntax is /api/tag/:id or /api/tag/:id/:page",
+        "success": false
+    })
+    res.end();
+    return false;
+});
+
+app.get("/api/tag/:tag", (req,res) => {
+    Axios(`https://nhentai.net/api/galleries/search?query=${req.params.tag}&page=1`).then(data => {
+        if(data.data.result[0] === undefined){
+            res.status(401).json({
+                "error": "Invaild tag",
+                "description": "This tag name is invaild",
+                "success": false
+            });
+            res.end();
+            return true;
+        }
+        res.send(data.data);
+        res.end();
+        return true;
+    }).catch(err => {
+        res.status(401).json(err);
+    });
+});
+
+app.get("/api/tag/:tag/:page", (req,res) => {
+    let page = req.params.page || 1;
+    Axios(`https://nhentai.net/api/galleries/search?query=${req.params.tag}&page=${page}`).then(data => {
+        if(data.data.result[0] === undefined){
+            res.status(401).json({
+                "error": "Invaild tag",
+                "description": "This tag name is invaild",
+                "success": false
+            });
+            res.end();
+            return true;
+        }
+        if(data.data.error === true){
+            res.status(401).json({
+                "error": "Invaild page",
+                "description": "This page exceed pages limit, try lower page down",
+                "success": false
+            });
+            res.end();
+            return true;
+        }
+        res.send(data.data);
+        res.end();
+        return true;
+    }).catch(err => {
+        res.status(401).json(err);
+    });
 });
 
 app.get("/version", (req,res) => {
     res.send(process.version);
+    res.end();
 });
 
 app.get("*", (req, res) => {
