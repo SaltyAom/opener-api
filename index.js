@@ -7,9 +7,18 @@ const express = require('express'),
     Ddos = require('ddos'),
     cache = apicache.middleware,
     queue = require('express-queue'),
-    Axios = require("axios");
+    axios = require("axios"),
+    { setupCache } = require("axios-cache-adapter");
 
 require('now-env');
+
+const axiosCache = setupCache({
+    maxAge: 604800
+});
+
+const Axios = axios.create({
+    adapter: axiosCache.adapter
+});
 
 onDenial = err => {
     console.warn(err);
@@ -38,8 +47,8 @@ app.use(cors());
 
 app.get("/", (req, res) => {
     res.json({
-        data: "API usage list is at https://github.com/aomkirby123/opener-api",
-        success:true
+        data: "API usage list is at https://api.opener.mystiar.com",
+        success: true
     })
 });
 
@@ -147,23 +156,27 @@ app.get("/api/relate", (req, res) => {
 
 app.get("/api/relate/:id", (req, res) => {
     if(req.params.id.length > 6 && req.params.id.length < 1){
-        res.json({
+        console.log("RELATED FAILED");
+        res.status(401).json({
             "success": false,
-            "error": "Invaild id format",
-            "description": "Correct syntax is /api/relate/:id between 1 to 999999",
-            dataURL: null
+            "description": "Page doesn't exists",
+            "error": "Failed to fetch"
         });
         res.end();
-        return false;
+        return;
     }
 
-    Axios(`https://nhentai.net/api/gallery/${req.params.id}/related`).then(data => {
+    Axios.get(`https://nhentai.net/api/gallery/${req.params.id}/related`).then(data => {
         res.send(data.data);
         res.end();
-        return true
     }).catch(err => {
-        res.status(401).json(err);
-    })
+        res.status(401).json({
+            "success": false,
+            "description": "Page doesn't exists",
+            "error": "Failed to fetch"
+        });
+        res.end()
+    });
 });
 
 app.get("/api/data", (req,res) => {
@@ -177,12 +190,17 @@ app.get("/api/data", (req,res) => {
 });
 
 app.get("/api/data/:id", (req,res) => {
-    Axios(`https://nhentai.net/api/gallery/${req.params.id}`).then(data => {
+    Axios.get(`https://nhentai.net/api/gallery/${req.params.id}`).then(data => {
         res.send(data.data);
         res.end();
         return true
     }).catch(err => {
-        res.status(401).json(err);
+        res.status(401).json({
+            "success": false,
+            "description": "Page doesn't exists",
+            "error": "Failed to fetch"
+        });
+        res.end();
     });
 });
 
@@ -197,7 +215,7 @@ app.get("/api/tag", (req,res) => {
 });
 
 app.get("/api/tag/:tag", (req,res) => {
-    Axios(`https://nhentai.net/api/galleries/search?query=${req.params.tag}&page=1`).then(data => {
+    Axios.get(`https://nhentai.net/api/galleries/search?query=${req.params.tag}&page=1`).then(data => {
         if(data.data.result[0] === undefined){
             res.status(401).json({
                 "error": "Invaild tag",
@@ -211,13 +229,18 @@ app.get("/api/tag/:tag", (req,res) => {
         res.end();
         return true;
     }).catch(err => {
-        res.status(401).json(err);
+        res.status(401).json({
+            "success": false,
+            "description": "Page doesn't exists",
+            "error": "Failed to fetch"
+        });
+        res.end()
     });
 });
 
 app.get("/api/tag/:tag/:page", (req,res) => {
     let page = req.params.page || 1;
-    Axios(`https://nhentai.net/api/galleries/search?query=${req.params.tag}&page=${page}`).then(data => {
+    Axios.get(`https://nhentai.net/api/galleries/search?query=${req.params.tag}&page=${page}`).then(data => {
         if(data.data.result[0] === undefined){
             res.status(401).json({
                 "error": "Invaild tag",
@@ -240,7 +263,137 @@ app.get("/api/tag/:tag/:page", (req,res) => {
         res.end();
         return true;
     }).catch(err => {
-        res.status(401).json(err);
+        res.status(401).json({
+            "success": false,
+            "description": "Page doesn't exists",
+            "error": "Failed to fetch"
+        });
+        res.end()
+    });
+});
+
+app.get("/api/image/:id/" , (req,res) => {
+	const extend = (obj, src) => {
+        for (let key in src) {
+            if (src.hasOwnProperty(key)) obj[key] = src[key];
+        }
+        return obj;
+    }
+
+    Axios.get(`https://nhentai.net/api/gallery/${req.params.id}`).then(async data => {
+        let pages = data.data.images.pages,
+            media = data.data.media_id;
+
+        await pages.forEach((page, index) => {
+            let imageType;
+            switch(page.t){
+                case "j":
+                    imageType = "jpg";
+                    break;
+                case "p":
+                    imageType = "png";
+                    break;
+                case "g":
+                    imageType = "gif";
+                    break;
+                default:
+                    imageType = "jpg"
+                    break;
+            }
+            extend(page, { src: `https://i.nhentai.net/galleries/${media}/${index + 1}.${imageType}` });
+        });
+
+        let imageCoverData = data.data.images.cover,
+            coverType;
+        switch(imageCoverData){
+            case "j":
+                coverType = "jpg";
+                break;
+            case "p":
+                coverType = "png";
+                break;
+            case "g":
+                coverType = "gif";
+                break;
+            default:
+                coverType = "jpg"
+                break;
+        }
+
+        let coverImage = extend(imageCoverData, { src: `https://i.nhentai.net/galleries/${media}/cover.${coverType}` })
+
+        let images = {
+            cover: coverImage,
+            pages: Object.assign({}, pages),
+            success: true
+        };
+
+        res.send(images);
+        res.end();
+        return true;
+    }).catch(err => {
+        res.status(401).json({
+            "success": false,
+            "description": "Page doesn't exists",
+            "error": "Failed to fetch"
+        });
+        res.end()
+    });
+});
+
+app.get("/api/image/:id/:pages" , (req,res) => {
+	const extend = (obj, src) => {
+        for (let key in src) {
+            if (src.hasOwnProperty(key)) obj[key] = src[key];
+        }
+        return obj;
+    }
+
+    Axios.get(`https://nhentai.net/api/gallery/${req.params.id}`).then(async data => {
+        let page = data.data.images.pages[+req.params.pages + 1],
+            media = data.data.media_id;
+
+        if(page === undefined){
+            res.json({
+                images: {},
+                description: "Page doesn't exists",
+                success:false
+            });
+            return;
+        }
+
+        let imageType;
+        switch(page){
+            case "j":
+                imageType = "jpg";
+                break;
+            case "p":
+                imageType = "png";
+                break;
+            case "g":
+                imageType = "gif";
+                break;
+            default:
+                imageType = "jpg"
+                break;
+        }
+        extend(page, { src: `https://i.nhentai.net/galleries/${media}/${req.params.pages}.${imageType}` });
+
+        let images = {
+            pages: Object.assign({}, page),
+            success: true
+        };
+
+        res.send(images);
+        res.end();
+        return true;
+    }).catch(err => {
+        res.status(401).json({
+            "success": false,
+            "description": "Page doesn't exists",
+            "error": "Failed to fetch"
+        });
+        res.end()
     });
 });
 

@@ -3,7 +3,7 @@ services:
   web:
     image: aomkirby12/opener-api:1.2.0
     deploy:
-      replicas: 5
+      replicas: 8
       resources:
         limits:
           cpus: "0.1"
@@ -11,7 +11,7 @@ services:
       restart_policy:
         condition: on-failure
     ports:
-      - "4000:80"
+      - "4000:4000"
     networks:
       - webnet
 networks:
