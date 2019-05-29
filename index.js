@@ -33,6 +33,7 @@ const ddos = new Ddos({
     errormessage: "You have been blocked due to attempted DOS, UMU",
     whitelist:[
         'https://opener-pro.mystia-project.com',
+        'https://api.opener.mystiar.com',
         'https://opener.mystiar.com',
         'https://h.rariffy.com'
     ]
@@ -190,8 +191,60 @@ app.get("/api/data", (req,res) => {
 });
 
 app.get("/api/data/:id", (req,res) => {
-    Axios.get(`https://nhentai.net/api/gallery/${req.params.id}`).then(data => {
-        res.send(data.data);
+    Axios.get(`https://nhentai.net/api/gallery/${req.params.id}`).then(async data => {
+        const extend = (obj, src) => {
+            for (let key in src) {
+                if (src.hasOwnProperty(key)) obj[key] = src[key];
+            }
+            return obj;
+        }
+    
+        let pages = data.data.images.pages,
+            media = data.data.media_id;
+
+        await pages.forEach((page, index) => {
+            let imageType;
+            switch(page.t){
+                case "j":
+                    imageType = "jpg";
+                    break;
+                case "p":
+                    imageType = "png";
+                    break;
+                case "g":
+                    imageType = "gif";
+                    break;
+                default:
+                    imageType = "jpg"
+                    break;
+            }
+            extend(page, { src: `https://i.nhentai.net/galleries/${media}/${index + 1}.${imageType}` });
+        });
+
+        let imageCoverData = data.data.images.cover,
+            coverType;
+        switch(imageCoverData){
+            case "j":
+                coverType = "jpg";
+                break;
+            case "p":
+                coverType = "png";
+                break;
+            case "g":
+                coverType = "gif";
+                break;
+            default:
+                coverType = "jpg"
+                break;
+        }
+
+        let coverImage = extend(imageCoverData, { src: `https://t.nhentai.net/galleries/${media}/cover.${coverType}` })
+
+        let result = data.data;
+            result.images.cover = coverImage;
+            result.success = true;
+
+        res.send(result);
         res.end();
         return true
     }).catch(err => {
@@ -240,6 +293,7 @@ app.get("/api/tag/:tag", (req,res) => {
 
 app.get("/api/tag/:tag/:page", (req,res) => {
     let page = req.params.page || 1;
+    
     Axios.get(`https://nhentai.net/api/galleries/search?query=${req.params.tag}&page=${page}`).then(data => {
         if(data.data.result[0] === undefined){
             res.status(401).json({
