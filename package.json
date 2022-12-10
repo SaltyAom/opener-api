@@ -13,7 +13,7 @@
     "cors": "^2.8.5",
     "ddos": "^0.2.1",
     "dotenv": "^8.0.0",
-    "express": "^4.17.1",
+    "express": "^4.17.3",
     "express-end": "^0.0.8",
     "express-queue": "^0.0.12",
     "helmet": "^3.18.0",
